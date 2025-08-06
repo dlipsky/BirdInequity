@@ -1,52 +1,36 @@
 #####BBS data quality check ####
 #####Project: Ecology and Economics####
-#####Lina Mühlbauer#####
-
-rm(list = ls())
-
+#####Lina Mhlbauer, modified and updated by Daria Lipsky #####
 
 require(DescTools)
 require(vegan)
 require(RColorBrewer)
 
 #load raw data
-States_combined <- read.csv("States_combined.csv")#load route BCR´s
+States_combined <- read.csv("data_2024/States_combined_2024.csv")#load route BCR?s
 
 #load results
-results_BBS <- read.csv("results_BBS_complete.csv")
+results_BBS <- read.csv("data_2024/results_BBS_2024_raw.csv")
 
-#vector for Route data ID (unique ID for year/route)
-routes.ID <- unique(States_combined$RouteDataID)
-routes <- routes.ID[-c(3060)]
-
-#assign route data ID to results 
-results_BBS$RouteDataID <- routes
-            
 #only use high quality routes
 #load weather data containing quality of each routeID, 1= high quality
 
-weather <- read.csv("weather.csv")
+weather <- read.csv("data_2024/weather.csv")
 highquality <- weather[weather$QualityCurrentID==1,]
 routes.hq <- highquality$RouteDataID
 
-#add column to store quality metric
-results_BBS$Quality <- NA
+#assign route data ID to results 
+results_BBS$RouteDataID <- unique(States_combined$RouteDataID)
 
-for (i in routes.ID){
-  ps <- weather[weather$RouteDataID==i,]
-  
-  quality <- ps$QualityCurrentID
-  
-  results_BBS[results_BBS$RouteDataID==i, "Quality"] <- quality
-  
-}
+#remove routes that are not in the weather data
+# results_BBS <- results_BBS[!(results_BBS$RouteDataID %in% c(6379693,6379098)),] 
+results_BBS <- results_BBS[results_BBS$RouteDataID %in% weather$RouteDataID,]
 
-# quality.check <- function(RouteDataID) {
-#   ps <- weather[RouteDataID,]
-#   
-#   quality <- ps$QualityCurrentID
-# 
-#   results_BBS[results_BBS$RouteDataID==RouteDataID, "Quality"]
-# }
-# 
-# apply(results_BBS$RouteDataID, 1, quality.check)
+results_BBS <- merge(results_BBS, weather[, c("RouteDataID", "QualityCurrentID")],
+                     by = "RouteDataID", all.x = TRUE)
+
+# Rename for consistency
+names(results_BBS)[names(results_BBS) == "QualityCurrentID"] <- "Quality"
+
+#save new results
+write.csv(results_BBS, "data_2024/results_BBS_2024.csv", row.names = FALSE)

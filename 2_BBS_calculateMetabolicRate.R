@@ -1,60 +1,87 @@
-#####GINI and Metabolic rate - BBS ####
-#####Project: Ecology and Economics####
-#####Lina Mhlbauer#####
-
-rm(list = ls())
+### GINI and Metabolic rate - BBS 
+### Project: Ecology and Economics
+### Lina M?hlbauer with changes from Daria Lipsky
 
 require(DescTools)
 require(vegan)
+library(dplyr)
+library(stringdist)  # for better fuzzy matching of species names
 
+#### 1 Load bodymass data and prepare ####
 #load species list and Bodymass data
-bodymass <- read.delim("North American birds_Bodymass.txt")
-species_List <- read.csv("Species_List.csv", sep=";")
+bodymass <- read.delim("data/North American birds_Bodymass.txt")
+species_List <- read.csv("data/Species_List.csv", sep=";")
 
-#create one column for species name in BBS species list
+# 1. Create Genus_Species name in both tables
 species_List$Genus_Species <- paste(species_List$Genus, species_List$Species)
 
-#get species vector from BBS species list
-species.BBS <- species_List$Genus_Species
+bodymass <- bodymass %>%
+  mutate(Genus_Species = Species)  # Assuming 'Species' is already 'Genus species' in bodymass
 
-#create matrix for storing results 
-#aou is the species code from the BBS data
-aou_bodymass <- matrix(NA, nrow=length(species.BBS), ncol=2)
-colnames(aou_bodymass) <- c("AOU", "Bodymass")
+# 2. First attempt: join by Genus_Species
+merged <- species_List %>%
+  left_join(bodymass %>% select(Genus_Species, Body.mass..g.), by = "Genus_Species")
 
-for (i in species.BBS){
+# 3. For missing bodymass, try to fill in by common name
+merged <- merged %>%
+  left_join(
+    bodymass %>% select(Common.name, Body.mass..g.) %>%
+      rename(English_Common_Name = Common.name,
+             Fallback_Bodymass = Body.mass..g.),
+    by = "English_Common_Name"
+  ) %>%
+  mutate(Final_Bodymass = ifelse(is.na(Body.mass..g.), Fallback_Bodymass, Body.mass..g.))
+
+# 4. Create final result: AOU + Bodymass
+aou_bodymass <- merged %>%
+  select(AOU, Bodymass = Final_Bodymass) %>% unique()
+
+rm(merged)
+
+#### 2 Missing species values: Automatic version ####
+
+# normalize species names
+clean_name <- function(x) {
+  x <- tolower(x)
+  x <- gsub("\\(.*\\)", "", x)     # remove anything in parentheses
+  x <- gsub(" x |/", " ", x)       # replace hybrids symbols with space
+  x <- gsub("[^a-z ]", "", x)      # remove special characters
+  x <- trimws(x)
+  return(x)
+}
+
+missing.species <- species_List$Genus_Species[which(is.na(aou_bodymass[,2]))]
+length(missing.species)
+
+clean_missing <- clean_name(missing.species)
+clean_bodymass <- clean_name(bodymass$Species)
+
+# initialize result
+unknown_bodymass_2 <- data.frame(
+  Genus_Species = missing.species,
+  Matched_Species = NA,
+  Bodymass = NA
+)
+
+# try automatic matching
+for (i in seq_along(clean_missing)) {
+  distances <- stringdist(clean_missing[i], clean_bodymass, method = "jw") # Jaro-Winkler
+  best_match_idx <- which.min(distances)
   
-  aou <- species_List[species_List$Genus_Species==i,]
-  aou.species <- aou$AOU
-  species <- bodymass[bodymass$Species==i,]
-  bodymass.species <- species$Body.mass..g.
-  
-  if(length(bodymass.species)==0){ #case1: not the same species in bodymass
-    #case2: same common name; diff. latin - check for common name
-     run <- which(species.BBS==i)
-     cname.BBS <- species_List[run,"English_Common_Name"]
-     ps.cname <-which(bodymass$Common.name==cname.BBS)
-     species.cname <- bodymass[ps.cname,]
-     
-     if(length(cname.BBS)==0|length(species.cname$Body.mass..g.)==0){ #case3: no bodymass known or no common name
-        aou_bodymass[run, 1] <- aou.species
-        aou_bodymass[run, 2 ] <- NA
-     }else {
-       
-       aou_bodymass[run, 1] <- aou.species
-       aou_bodymass[run, 2 ] <- species.cname$Body.mass..g.[1]
-  }} else {
-  
-  run <- which(species.BBS==i)
-  
-  aou_bodymass[run, 1] <- aou.species
-  aou_bodymass[run, 2 ] <- bodymass.species[1] }}
+  if (distances[best_match_idx] < 0.15) {  # adjust threshold if needed
+    unknown_bodymass_2$Matched_Species[i] <- bodymass$Species[best_match_idx]
+    unknown_bodymass_2$Bodymass[i] <- bodymass$Body.mass..g.[best_match_idx]
+  }
+}
+
+
+
+#### 3 Missing species values: Lina's manual version ####
 
 #check for missing values 
 #bodymass data.frame contains real duplicates!
-missing <- which(is.na(aou_bodymass[,2]))
-missing.species <- species_List$Genus_Species[missing]
-length(missing)
+missing.species <- species_List$Genus_Species[which(is.na(aou_bodymass[,2]))]
+length(missing.species)
 
 #158 species where still body mass missing - check for hybrids?
 check <- "/"
@@ -69,20 +96,20 @@ other <- missing.species[which(!(missing.species%in%hybrids))]
 unknown_bodymass <- matrix(NA, nrow=length(missing.species), ncol =2)
 unknown_bodymass[,1] <- missing.species
 
-#add missing species bodymass manually ####
-missing.species[1]
+#add missing species bodymass manually
+missing.species[1] #"Anser caerulescens"
 b1 <-bodymass[bodymass$Species=="Chen caerulescens",]
 unknown_bodymass[1,2] <- b1$Body.mass..g.
 
-missing.species[2]
+missing.species[2] #"Anser caerulescens (blue form)"
 unknown_bodymass[2,2] <- b1$Body.mass..g.
 
-missing.species[3]
+missing.species[3] #"Anser rossii"
 b3 <- bodymass[bodymass$Species=="Chen rossii",]
 unknown_bodymass[3,2] <- b3$Body.mass..g.
 #species_List[species_List$Genus_Species=="Anser rossii",]
 
-missing.species[4]
+missing.species[4] #"Branta bernicla nigricans"
 b4 <-bodymass[bodymass$Common.name=="Brant",]
 unknown_bodymass[4,2] <- b4$Body.mass..g.
 
@@ -680,64 +707,45 @@ b158a <- bodymass[bodymass$Species=="Passerina amoena",]
 b158b <- bodymass[bodymass$Species=="Passerina cyanea",]
 unknown_bodymass[158,2] <- (b158a$Body.mass..g.+b158b$Body.mass..g.)/2
 
+
+#### 4 Merge missing bodymass and calculate total energy per route ####
+# Rename columns for clarity
+colnames(unknown_bodymass) <- c("Genus_Species", "Bodymass")
+unknown_bodymass <- as.data.frame(unknown_bodymass)
+
 #add unknown bodymass to aou_bodymass dataframe
-aou_bodymass <- as.data.frame(aou_bodymass)
+# Add AOU codes by joining with species_List
+unknown_bodymass <- unknown_bodymass %>%
+  left_join(species_List %>% select(Genus_Species, AOU), by = "Genus_Species")
 
-species.unknown <- unique(unknown_bodymass$V1)
-
-for (i in species.unknown){
-  
-  aou <- species_List[species_List$Genus_Species==i,]
-  aou.species <- aou$AOU
-  species <- unknown_bodymass[unknown_bodymass$V1==i,]
-  bodymass.species <- species$V2
-  
-  
-  ps <- which(aou_bodymass$AOU==aou.species)
-  aou_bodymass[ps, "Bodymass"] <- bodymass.species
-}
-
-#add metabolic rate per species to aou_bodymass ####
-
-species.aou <- aou_bodymass$AOU
-E <- c(rep(NA, length(aou_bodymass$AOU)))
-for (i in species.aou){
-  species <- aou_bodymass[aou_bodymass$AOU==i,]
-  bodymass.species <- species$Bodymass
-  e <- bodymass.species^0.75
-  run <- which(species.aou==i)
-  E[run] <- e
-} 
-
-aou_bodymass$E <- E
+# Replace missing bodymass values in aou_bodymass using left_join
+aou_bodymass <- aou_bodymass %>%
+  mutate(AOU = as.numeric(AOU)) %>%  # Ensure AOU is numeric if needed
+  left_join(unknown_bodymass %>% select(AOU, Bodymass_unknown = Bodymass), by = "AOU") %>%
+  mutate(
+    Bodymass = ifelse(is.na(Bodymass), Bodymass_unknown, Bodymass),
+    Bodymass = as.numeric(Bodymass),
+    E = Bodymass^0.75
+  ) %>%
+  select(-Bodymass_unknown)
 
 #load result data BBS and overall BBS data
-results_BBS <- read.csv("~/results_BBS_complete.csv", row.names=1)
-States_combined <- read.csv("~/BBS_all_rawdata.csv")
-routes <- as.integer(unique(States_combined$RouteDataID)) 
-ps <- which(is.finite(routes))
-route.ID <- routes[ps]
-  
-E_total <- c(rep(NA,length(route.ID)))
+results_BBS_df <- read.csv("data_2024/Results_BBS_2024.csv")
+States_combined <- read.csv("data_2024/States_combined_2024.csv")#load route BCR?s
 
-for (i in route.ID){
-  route <- States_combined[States_combined$RouteDataID==i,]
-  route.species <- as.integer(route$AOU)
-  e_species <- c(rep(NA, length(route.species))) 
-  for (j in route.species){
-    aou_species <- aou_bodymass[aou_bodymass$AOU==j,]
-    E_x <- aou_species$E
-    run <- which(route.species==j)
-    e_species[run] <- E_x
-  }
-  species.total <- as.integer(route$SpeciesTotal)
-  E_total_ind <- sum(species.total*e_species, na.rm = T)
-  run <- which(route.ID==i)
-  E_total[run] <- E_total_ind
-}
-E_total
+# Merge States_combined with aou_bodymass to add E
+combined <- States_combined %>%
+  mutate(AOU = as.integer(AOU), SpeciesTotal = as.integer(SpeciesTotal)) %>%
+  left_join(aou_bodymass, by = "AOU")
 
-E_total <- c(E_total, NA)
+# Calculate E_total per route
+E_summary <- combined %>%
+  group_by(RouteDataID) %>%
+  summarise(E_total = sum(SpeciesTotal * E, na.rm = TRUE), .groups = "drop")
 
-results_BBS$E_total <- E_total
+results_BBS_df <- results_BBS_df %>%
+  left_join(E_summary, by = "RouteDataID")
+
+write.csv(results_BBS_df, "data_2024/Results_BBS_complete.csv", row.names = FALSE)
+
 
