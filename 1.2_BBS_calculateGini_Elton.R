@@ -75,6 +75,8 @@ colnames(results_BBS) <- c("State", "Route", "Year", "S","N", "GINI", "BCR",
                            "GINI_Plant", "GINI_Omni", "GINI_Inv", "GINI_Vert",
                            "GINI_Fruit")
 
+# routes <- routes %>% head()
+
 #loop data selection for one year/ all data 
 for (i in routes){
     temp.data <- States_combined[States_combined$RouteDataID==i,]
@@ -92,11 +94,11 @@ for (i in routes){
       results_BBS[run,5] <- sum(as.integer(temp.data$SpeciesTotal))#calculate NIndividuals=N
       results_BBS[run,6] <- Gini(as.integer(temp.data$SpeciesTotal))#calculate Gini
       # results_BBS[run,7] <- BCR.ps$BCR #save habitat type
-      results_BBS[run,8] <- Gini(as.integer(temp.data$SpeciesTotal[temp.data$Diet.5Cat=="Plant"]))#calculate Gini Plant
-      results_BBS[run,9] <- Gini(as.integer(temp.data$SpeciesTotal[temp.data$Diet.5Cat=="Omni"]))#calculate Gini Omni
-      results_BBS[run,10] <- Gini(as.integer(temp.data$SpeciesTotal[temp.data$Diet.5Cat=="Inv"]))#calculate Gini Inv
-      results_BBS[run,11] <- Gini(as.integer(temp.data$SpeciesTotal[temp.data$Diet.5Cat=="Vert"]))#calculate Gini Vert
-      results_BBS[run,12] <- Gini(as.integer(temp.data$SpeciesTotal[temp.data$Diet.5Cat=="Fruit"]))#calculate Gini Fruit
+      results_BBS[run,8] <- Gini(as.integer(temp.data$SpeciesTotal[temp.data$Diet.5Cat=="PlantSeed"]), na.rm=TRUE)#calculate Gini Plant
+      results_BBS[run,9] <- Gini(as.integer(temp.data$SpeciesTotal[temp.data$Diet.5Cat=="Omnivore"]), na.rm=TRUE)#calculate Gini Omni
+      results_BBS[run,10] <- Gini(as.integer(temp.data$SpeciesTotal[temp.data$Diet.5Cat=="Invertebrate"]), na.rm=TRUE)#calculate Gini Inv
+      results_BBS[run,11] <- Gini(as.integer(temp.data$SpeciesTotal[temp.data$Diet.5Cat=="Vertebrate"]), na.rm=TRUE)#calculate Gini Vert
+      results_BBS[run,12] <- Gini(as.integer(temp.data$SpeciesTotal[temp.data$Diet.5Cat=="FruiNect"]), na.rm=TRUE)#calculate Gini Fruit
 }
 #save results
 results_BBS_df <- as.data.frame(results_BBS)
