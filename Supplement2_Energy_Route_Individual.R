@@ -1,6 +1,6 @@
 #####S2_Energy per individual and route####
 #####Project: Ecology and Economics####
-#####Lina Mühlbauer#####
+#####Lina M?hlbauer#####
 
 rm(list = ls())
 
@@ -12,8 +12,6 @@ require(akima)
 
 #load results_BBS
 results_BBS <- read.csv("results_BBS_complete.csv")
-
-
 
 pdf(width= 8, height =6, file="Eind_Eroute_relation.pdf")
 plot(results_BBS$E_total, results_BBS$E_total/results_BBS$N,

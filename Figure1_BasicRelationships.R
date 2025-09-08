@@ -1,6 +1,6 @@
-#####Figure1_GINI_S_N_3D####
-#####Project: Ecology and Economics####
-#####Lina Mühlbauer#####
+### Figure1_GINI_S_N_3D
+### Project: Ecology and Economics
+### Lina M?hlbauer with changes by Daria Lipsky
 
 rm(list = ls())
 
@@ -8,54 +8,94 @@ require(DescTools)
 require(vegan)
 require(scales)
 require(akima)
+library(dplyr)
+library(ggplot2)
 
+
+setwd("C:/Users/aa82eluj/Desktop/BirdInequity/")
 #load results_BBS
-results_BBS <- read.csv("results_BBS_complete.csv")
 
-###plot###
-pdf(width=12, height = 6, file="figure_1.pdf")
-par(mfrow=c(1,2))
+routes70s_bool <- FALSE
+results_BBS <- read.csv("data_2024/results_BBS_2024.csv")
 
-# quality
-results_BBS_1 <- results_BBS[results_BBS$Quality==0,]
-col <- viridisLite::cividis(2)
-plot(results_BBS$S, results_BBS$GINI, xlab="S", ylab="Gini", cex=0.4)
-points(results_BBS_1$S, results_BBS_1$GINI, col="red")
+if(routes70s_bool){
+  #analysing subset of routes that were already surveyed in the 1970s to check if the effects we found are driven by newer routes.
+  routes70s <- results_BBS %>% filter(Year<=1979) %>% dplyr::select(State, Route)
+  results_BBS <- results_BBS %>% #filter only values with State and Route in routes70s
+    filter(paste(State, Route) %in% paste(routes70s$State, routes70s$Route))
+  
+}
 
-plot(log(results_BBS$N), results_BBS$GINI, xlab="log(N)", ylab="", cex=0.4)
-points(log(results_BBS_1$N), results_BBS_1$GINI, col="red")
-mod1 <- lm(results_BBS$GINI~log(results_BBS$N))
-abline(mod1, col =col[1])
-modsum1 <- summary(mod1)
-
-legend("bottomright", legend = c(expression("adj."*R^2*"="),round(modsum1$adj.r.squared, digits=2)), bty="n")
-
+#### 1 Plot basic relationships between S, N and GINI ####
+if(routes70s_bool){
+  pdf(width=6, height = 6, file="figure_1a_Ginivslog(N)_routes70s.pdf")
+}else{
+  pdf(width=6, height = 6, file="figure_1a_Ginivslog(N)_allroutes.pdf")
+}
+ggplot(results_BBS, aes(x=log(N), y=GINI)) +
+  geom_point(size=0.4) +
+  labs(x="log(N)", y="Gini") +
+  theme_bw() +
+  theme(legend.position = "bottomright", text = element_text(size=20)) +
+  stat_smooth(method="lm", col="black") +
+  annotate("text", x=0, y=max(results_BBS$GINI, na.rm=T), 
+           # label=paste("adj.R^2 =", round(summary(lm(GINI ~ log(N), data=results_BBS))$adj.r.squared, digits=2)), #do it with bquote
+           label=bquote("adj."*R^2*"="*.(round(summary(lm(GINI ~ log(N), data=results_BBS))$adj.r.squared, digits=2))),
+           hjust=0, vjust=1, size=5)
 dev.off()
 
+if(routes70s_bool){
+  pdf(width=6, height = 6, file="figure_1b_GinivsS_routes70s.pdf")
+}else{
+  pdf(width=6, height = 6, file="figure_1b_GinivsS_allroutes.pdf")
+}
+ggplot(results_BBS, aes(x=S, y=GINI)) +
+  geom_point(size=0.4) +
+  geom_point(data=results_BBS, aes(x=S, y=GINI)) +
+  labs(x="S", y="Gini") +
+  theme_bw() +
+  theme(legend.position = "topright", text = element_text(size=20))
+dev.off()
+
+
+#### 2 Contour plot####
 #set variables for contour.plot
 x <- results_BBS$S
 y <- results_BBS$N
 z <- results_BBS$GINI
-#remove missing value combinations
+#remove missing value combinations, gives indices of finite values (not NA or infinite)
 ps <- which(is.finite(x)&is.finite(y)&is.finite(z))
 
 #interpolate data (Gridded Bivariate Interpolation)
+#xo and yo create a grid of S and N values slightly wider than the observed data
 xo <- seq(min(x[ps])-2, max(x[ps])+2, 1)
 yo <- seq(min(y[ps])-2, max(y[ps])+2, length.out = 103)
+#interp() performs a bivariate interpolation of the Gini values over this grid,
+#smoothing the relationship between S, N and GINI
+#duplicate="mean" handles duplicated (x, y) pairs by averaging the z values
 interp_xyz <- interp(x[ps],y[ps],z[ps], xo=xo, yo=yo, duplicate="mean")
 
 #plot filled.contour
-pdf(width=12, height = 8, file="figure_1b_basicrelationships.pdf")
-filled.contour(interp_xyz, xlab="S", ylab="N", 
-               key.title=title(main = "Gini"), color.palette = viridis_pal(),
-               plot.axes ={axis(1); axis(2); 
-                 points(jitter(x[ps], 1), y[ps], cex=0.4)})#adds points
+
+if(routes70s_bool){
+  pdf(width=10, height = 8, file="figure_1c_contourSNGini_routes70s.pdf")
+}else{
+  pdf(width=10, height = 8, file="figure_1c_contourSNGini_allroutes.pdf")
+}
+par(mar = c(5, 5,5,5))
+filled.contour(interp_xyz, xlab="S", ylab="N", #change font size
+               cex.lab = 1.5, plot.axes={
+                 axis(1,cex.axis=1.2)
+                 axis(2,cex.axis=1.2)
+               },
+               key.title=title(main = "Gini"), color.palette = viridis_pal()
+               )
 dev.off()
 
-#plot heatmap
+par(mar = c(5.1, 4.1, 4.1, 2.1))
 
-#remove low quality counts
-results_BBS <- results_BBS[results_BBS$Quality==1,]
+#### 3 Heatmap of binned S and log(N) values ####
+#plot heatmap
 
 #add column with logged N values 
 results_BBS$logN <- log(results_BBS$N)
@@ -98,7 +138,11 @@ colnames(x) <- upper.n
 rownames(x) <- upper.s
 require(scales)
 require(lattice)
-pdf()
+if(routes70s_bool){
+  pdf(file="figure_1d_heatmap_routes70s.pdf")
+}else{
+  pdf(file="figure_1d_heatmap_allroutes.pdf")
+}
 levelplot(x, xlab="S", ylab="log(N)", col.regions=viridis_pal(), pretty=T)
 dev.off()
 

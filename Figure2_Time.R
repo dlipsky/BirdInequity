@@ -1,6 +1,6 @@
 #####Figure2_Time####
 #####Project: Ecology and Economics####
-#####Lina Mühlbauer#####
+#####Lina M?hlbauer#####
 
 rm(list = ls())
 
@@ -10,62 +10,80 @@ require(vegan)
 require(scales)
 require(akima)
 
-#load results_BBS
-results_BBS <- read.csv("results_BBS_complete.csv")
+setwd("C:/Users/aa82eluj/Desktop/BirdInequity/")
 
+routes70s_bool <- FALSE
+results_BBS <- read.csv("data_2024/Results_BBS_complete_diet.csv")
 
-#create data.frame for storing year and mean gini, mean N and mean S ...
-MeanGini_year <- matrix(NA,nrow=length(unique(results_BBS$Year)), ncol=7)
-colnames(MeanGini_year) <- c("Year", "Mean_Gini", "Mean_N","Mean_S", "Mean_E", "Mean_EN", "Nroutes")
-
-#extract all years
-years <- sort(unique(results_BBS$Year))
-
-for (i in years){
-  
-  #calculate mean for Gini, N and S for each year
-  mean_Gini <- mean(results_BBS[results_BBS$Year==i, "GINI"], na.rm=T)
-  mean_N <- mean(results_BBS[results_BBS$Year==i, "N"], na.rm=T)
-  mean_S <- mean(results_BBS[results_BBS$Year==i, "S"], na.rm=T)
-  mean_E <- mean(results_BBS[results_BBS$Year==i, "E_total"], na.rm=T)
-  mean_EN <- mean(results_BBS[results_BBS$Year==i, "E_total"]/results_BBS[results_BBS$Year==i, "N"], na.rm=T)
-  n.routes <- length(results_BBS[results_BBS$Year==i, "GINI"])
-  
-  #check for run
-  run <- which(years==i)
-  #save year and means in matrix
-  MeanGini_year[run, 1] <- i
-  MeanGini_year[run, 2] <- mean_Gini
-  MeanGini_year[run, 3] <- mean_N
-  MeanGini_year[run, 4] <- mean_S
-  MeanGini_year[run, 5] <- mean_E
-  MeanGini_year[run, 6] <- mean_EN
-  MeanGini_year[run, 7] <- n.routes
+if(routes70s_bool){
+  #analysing subset of routes that were already surveyed in the 1970s to check if the effects we found are driven by newer routes.
+  routes70s <- results_BBS %>% filter(Year<=1979) %>% dplyr::select(State, Route)
+  results_BBS <- results_BBS %>% #filter only values with State and Route in routes70s
+    filter(paste(State, Route) %in% paste(routes70s$State, routes70s$Route))
   
 }
 
-pdf(width = 12, height = 10, file="figure2.pdf")
-col <- viridisLite::viridis(6)
-par(mfrow=c(3,2))
-plot(MeanGini_year[,1], MeanGini_year[,2], xlab = "", ylab="Mean(Gini)",
-     xaxt="n", cex=1.2, col=col[1], pch = 16, cex.axis = 1.2, cex.lab=1.2)
-mod1 <- lm(MeanGini_year[,2]~MeanGini_year[,1])
+years <- sort(unique(results_BBS$Year))
+col <- viridisLite::viridis(8)
+
+
+MeanGini_year <- results_BBS %>%
+  group_by(Year) %>%
+  summarise(
+    Mean_Gini = mean(GINI, na.rm = TRUE),
+    Mean_N = mean(N, na.rm = TRUE),
+    Mean_S = mean(S, na.rm = TRUE),
+    # Mean_E = mean(E_total, na.rm = TRUE), #those where original bodymass calculations
+    # Mean_EN = mean(E_total / N, na.rm = TRUE),
+    Nroutes = n(),
+    Mean_E_diet = mean(E_total_diet, na.rm = TRUE),
+    Mean_EN_diet = mean(E_total_diet/N, na.rm = TRUE),
+    Mean_E_Plant = mean(E_total_PlantSeed, na.rm = TRUE),
+    Mean_E_Omni = mean(E_total_Omnivore, na.rm = TRUE),
+    Mean_E_Inv = mean(E_total_Inv, na.rm = TRUE),
+    Mean_E_Vert = mean(E_total_Vert, na.rm = TRUE),
+    Mean_E_Fruit = mean(E_total_FruiNec, na.rm = TRUE),
+    Mean_S_Plant = mean(S_PlantSeed, na.rm = TRUE),
+    Mean_S_Omni = mean(S_Omnivore, na.rm = TRUE),
+    Mean_S_Inv = mean(S_Inv, na.rm = TRUE),
+    Mean_S_Vert = mean(S_Vert, na.rm = TRUE),
+    Mean_S_Fruit = mean(S_FruiNec, na.rm = TRUE),
+    Mean_N_Plant = mean(N_Plantseed, na.rm = TRUE),
+    Mean_N_Omni = mean(N_Omnivore, na.rm = TRUE),
+    Mean_N_Inv = mean(N_Inv, na.rm = TRUE),
+    Mean_N_Vert = mean(N_Vert, na.rm = TRUE),
+    Mean_N_Fruit = mean(N_FruiNec, na.rm = TRUE),
+    Mean_trophiclevel = mean(Ave_trophiclevel, na.rm = TRUE),
+    Mean_bodymass = mean(Ave_bodymass, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+if(routes70s_bool){
+  pdf(width = 10, height = 10, file="figure_2_8plots_routes70.pdf")
+}else{
+  pdf(width = 10, height = 10, file="figure_2_8plots_allroutes.pdf")
+}
+par(mfrow=c(4,2))
+par(mar = c(5.1, 5, 4.1, 2.1))
+plot(MeanGini_year$Year, MeanGini_year$Mean_Gini, xlab = "", ylab="Mean(Gini)",
+     xaxt="n", cex=1.2, col=col[1], pch = 16, cex.axis = 1.4, cex.lab=1.4)
+mod1 <- lm(MeanGini_year$Mean_Gini~MeanGini_year$Year)
 abline(mod1, col = col[1])
 abline(v=1986, lty="dashed", col="black")
 R1 <- summary(mod1)
-legend("topright", legend = c(expression("adj."*R^2*"="),round(R1$adj.r.squared, digits=2)), bty="n")
+legend("topright", legend = c(expression("adj."*R^2*"="),round(R1$adj.r.squared, digits=2)), bty="n", cex=1.4)
 
 
-plot(MeanGini_year[,1], MeanGini_year[,3], xlab = "", ylab="Mean(N)", xaxt = "n", cex=1.2, col=col[2], pch = 16, cex.axis = 1.2, cex.lab=1.2)
-mod2 <- lm(MeanGini_year[,3]~MeanGini_year[,1])
+plot(MeanGini_year$Year, MeanGini_year$Mean_N, xlab = "", ylab="Mean(N)", xaxt = "n", cex=1.2, col=col[2], pch = 16, cex.axis = 1.4, cex.lab=1.4)
+mod2 <- lm(MeanGini_year$Mean_N~MeanGini_year$Year)
 abline(mod2, col = col[2])
 abline(v=1986, lty="dashed", col="black")
 R2 <- summary(mod2)
-legend("topright", legend = c(expression("adj."*R^2*"="),round(R2$adj.r.squared, digits=2)), bty="n")
+legend("topright", legend = c(expression("adj."*R^2*"="),round(R2$adj.r.squared, digits=2)), bty="n", cex = 1.4)
 
 
 
-plot(MeanGini_year[,1], MeanGini_year[,4], xlab = "", ylab="Mean(S)", xaxt="n",cex=1.2, col=col[3], pch = 16, cex.axis = 1.2, cex.lab=1.2)
+plot(MeanGini_year$Year, MeanGini_year$Mean_S, xlab = "", ylab="Mean(S)", xaxt="n",cex=1.2, col=col[3], pch = 16, cex.axis = 1.4, cex.lab=1.4)
 abline(v=1986, lty="dashed", col="black")
 #create data.frame for storing year and slope
 slope_year <- matrix(NA,nrow=length(unique(results_BBS$Year)), ncol=3)
@@ -91,21 +109,32 @@ for (i in years){
 }
 
 #plot Gini slope/year vs. Year
-plot(slope_year[,1], slope_year[,2], xlab="", ylab="Slope:Gini_N", cex=1.2, col=col[4], xaxt="n", pch = 16, cex.axis = 1.2, cex.lab=1.2)
+plot(slope_year[,1], slope_year[,2], xlab="", ylab="Slope:Gini_N", cex=1.2, col=col[4], xaxt="n", pch = 16, cex.axis = 1.4, cex.lab=1.4)
 mod4 <- lm(slope_year[,2]~ slope_year[,1])
 abline(mod4, col = col[4])
 abline(v=1986, lty="dashed", col="black")
 R4 <- summary(mod4)
-legend("topright", legend = c(expression("adj."*R^2*"="),round(R4$adj.r.squared, digits=2)), bty="n")
+legend("topright", legend = c(expression("adj."*R^2*"="),round(R4$adj.r.squared, digits=2)), bty="n", cex = 1.4)
 
-plot(MeanGini_year[,1], MeanGini_year[,5], xlab ="Year", ylab = "Mean(Energyflux/route)", col=col[5], pch = 16, cex=1.2, cex.axis = 1.2, cex.lab=1.2)
+#add two plots: bodymass and trophic level
+plot(MeanGini_year$Year, MeanGini_year$Mean_bodymass, xlab ="", ylab = "Mean(Bodymass)", col=col[5],xaxt="n", pch = 16, cex=1.2, cex.axis = 1.4, cex.lab=1.4)
 abline(v=1986, lty="dashed", col="black")
-plot(MeanGini_year[,1], MeanGini_year[,6], xlab ="Year", ylab = "Mean(Energyflux/ind.)", col=col[6], pch = 16, cex=1.2, cex.axis = 1.2, cex.lab=1.2)
-mod3 <- lm(MeanGini_year[,6]~MeanGini_year[,1])
-abline(mod3, col = col[6])
+mod3 <- lm(MeanGini_year$Mean_bodymass~MeanGini_year$Year)
+abline(mod3, col = col[5])
+R3 <- summary(mod3)
+legend("bottomright", legend = c(expression("adj."*R^2*"="),round(R3$adj.r.squared, digits=2)), bty="n", cex=1.4)
+
+plot(MeanGini_year$Year, MeanGini_year$Mean_trophiclevel, xlab ="", ylab = "Mean(Trophic level)", col=col[6], xaxt="n",pch = 16, cex=1.2, cex.axis = 1.4, cex.lab=1.4)
+abline(v=1986, lty="dashed", col="black")
+
+plot(MeanGini_year$Year, MeanGini_year$Mean_E_diet, xlab ="Year", ylab = "Mean(Energydemand/route)", col=col[7], pch = 16, cex=1.2, cex.axis = 1.4, cex.lab=1.4)
+abline(v=1986, lty="dashed", col="black")
+plot(MeanGini_year$Year, MeanGini_year$Mean_EN_diet, xlab ="Year", ylab = "Mean(Energydemand/ind.)", col=col[8], pch = 16, cex=1.2, cex.axis = 1.4, cex.lab=1.4)
+mod3 <- lm(MeanGini_year$Mean_EN_diet~MeanGini_year$Year)
+abline(mod3, col = col[8])
 abline(v=1986, lty="dashed", col="black")
 R3 <- summary(mod3)
-legend("bottomright", legend = c(expression("adj."*R^2*"="),round(R3$adj.r.squared, digits=2)), bty="n")
-
+legend("bottomright", legend = c(expression("adj."*R^2*"="),round(R3$adj.r.squared, digits=2)), bty="n", cex = 1.4)
 
 dev.off()
+
