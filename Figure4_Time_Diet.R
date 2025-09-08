@@ -365,6 +365,9 @@ ggplot(MeanGini_year, aes(x = Year)) +
         legend.title = element_text(size = 14))
 dev.off()
 
+##### 1.5 Inequality #####
+
+
 #### 2 Plot Diet-Adjusted Energy Demand per Individual and per Route ####
 # plotting both original and diet-adjusted energy demand per individual
 # version 1: two y-axes

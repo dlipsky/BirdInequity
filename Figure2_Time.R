@@ -61,7 +61,7 @@ MeanGini_year <- results_BBS %>%
 if(routes70s_bool){
   pdf(width = 10, height = 10, file="figure_2_8plots_routes70.pdf")
 }else{
-  pdf(width = 10, height = 10, file="figure_2_8plots_allroutes.pdf")
+  pdf(width = 10, height = 10, file="figure_2_8plots_allroutes2.pdf")
 }
 par(mfrow=c(4,2))
 par(mar = c(5.1, 5, 4.1, 2.1))
