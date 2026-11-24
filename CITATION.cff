@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite it as below."
+title: "BirdInequity: R code for 'Energetic stability despite 58 years of population declines in North American bird communities'"
+version: 1.0.0
+date-released: 2026-11-24
+license: MIT
+repository-code: "https://github.com/dlipsky/BirdInequity"
+authors:
+  - family-names: Lipsky
+    given-names: Daria
+  - family-names: Mühlbauer
+    given-names: Lina K.
+  - family-names: Valdez
+    given-names: Jose W.
+  - family-names: Pereira
+    given-names: Henrique M.
+  - family-names: Hines
+    given-names: Jes
