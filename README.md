@@ -4,7 +4,7 @@ R code for the manuscript **"Energetic stability despite 58 years of population 
 
 **Daria Lipsky, Lina K. Mühlbauer, Jose W. Valdez, Henrique M. Pereira, Jes Hines**
 
-[![DOI](https://zenodo.org/badge/DOI/ADD-ZENODO-DOI-HERE.svg)](https://doi.org/ADD-ZENODO-DOI-HERE)
+[![DOI](https://zenodo.org/badge/995496355.svg)](https://doi.org/10.5281/zenodo.24501494)
 
 ---
 
@@ -100,7 +100,7 @@ install.packages(c("lme4", "MuMIn", "DescTools", "ggplot2", "patchwork"))
 
 If you use this code, please cite the archived version of this repository and the manuscript:
 
-> Lipsky, D., Mühlbauer, L. K., Valdez, J. W., Pereira, H. M., & Hines, J. (2026). *BirdInequity: R code for "Energetic stability despite 58 years of population declines in North American bird communities"* (Version 1.0.0) [Software]. Zenodo. https://doi.org/ADD-ZENODO-DOI-HERE
+> Lipsky, D., Mühlbauer, L. K., Valdez, J. W., Pereira, H. M., & Hines, J. (2026). *BirdInequity: R code for "Energetic stability despite 58 years of population declines in North American bird communities"* (Version 1.0.0) [Software]. Zenodo. https://doi.org/10.5281/zenodo.24501495
 
 The manuscript reference will be added after publication.
 
